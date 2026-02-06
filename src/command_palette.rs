@@ -2,6 +2,7 @@
 pub enum Command {
     NewSprite,
     OpenFile,
+    LoadFromURL,
     SaveFile,
     ToggleGrid,
     ToggleIsometric,
@@ -49,6 +50,11 @@ impl CommandPalette {
                 name: "Open File...",
                 shortcut: "Ctrl+O",
                 command: Command::OpenFile,
+            },
+            CommandEntry {
+                name: "Load from URL...",
+                shortcut: "",
+                command: Command::LoadFromURL,
             },
             CommandEntry {
                 name: "Save File",

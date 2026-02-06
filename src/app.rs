@@ -21,6 +21,10 @@ pub struct SpriteditApp {
     new_width: String,
     new_height: String,
 
+    // URL load dialog
+    show_url_dialog: bool,
+    url_input: String,
+
     // GenAI dialog
     show_ai_dialog: bool,
     ai_prompt: String,
@@ -42,6 +46,8 @@ impl SpriteditApp {
             show_new_dialog: false,
             new_width: "16".into(),
             new_height: "16".into(),
+            show_url_dialog: false,
+            url_input: String::new(),
             show_ai_dialog: false,
             ai_prompt: String::new(),
             status_message: "Ready".into(),
@@ -50,7 +56,7 @@ impl SpriteditApp {
 
     fn handle_shortcuts(&mut self, ctx: &egui::Context) {
         // Don't handle tool shortcuts while command palette or dialogs are open
-        if self.command_palette.is_open || self.show_new_dialog || self.show_ai_dialog {
+        if self.command_palette.is_open || self.show_new_dialog || self.show_url_dialog || self.show_ai_dialog {
             return;
         }
 
@@ -102,6 +108,7 @@ impl SpriteditApp {
         match command {
             Command::NewSprite => self.show_new_dialog = true,
             Command::OpenFile => self.open_file(),
+            Command::LoadFromURL => self.show_url_dialog = true,
             Command::SaveFile => self.save_file(),
             Command::ToggleGrid => {
                 self.canvas_state.show_grid = !self.canvas_state.show_grid;
@@ -374,6 +381,64 @@ impl SpriteditApp {
         self.show_new_dialog = open;
     }
 
+    fn load_from_url(&mut self, url: &str) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            match io::native::fetch_url(url) {
+                Ok(data) => {
+                    if let Some(sprite) = io::png_to_sprite(&data) {
+                        self.status_message =
+                            format!("Loaded {}x{} sprite from URL", sprite.width, sprite.height);
+                        self.sprite = sprite;
+                        self.canvas_state.offset = egui::Vec2::ZERO;
+                    } else {
+                        self.status_message = "Failed to decode image from URL".into();
+                    }
+                }
+                Err(e) => {
+                    self.status_message = format!("URL fetch error: {e}");
+                }
+            }
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            io::web::fetch_url(url);
+            self.status_message = "Fetching image from URL...".into();
+        }
+    }
+
+    fn show_url_dialog(&mut self, ctx: &egui::Context) {
+        let mut open = self.show_url_dialog;
+        egui::Window::new("Load from URL")
+            .open(&mut open)
+            .resizable(false)
+            .collapsible(false)
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .show(ctx, |ui| {
+                ui.label("Enter image URL:");
+                ui.add_space(4.0);
+                let response = ui.add(
+                    egui::TextEdit::singleline(&mut self.url_input)
+                        .desired_width(400.0)
+                        .hint_text("https://example.com/sprite.png"),
+                );
+                ui.add_space(8.0);
+                ui.horizontal(|ui| {
+                    let enter_pressed = response.lost_focus()
+                        && ui.input(|i| i.key_pressed(egui::Key::Enter));
+                    if ui.button("Load").clicked() || enter_pressed {
+                        let url = self.url_input.clone();
+                        self.load_from_url(&url);
+                        self.show_url_dialog = false;
+                    }
+                    if ui.button("Cancel").clicked() {
+                        self.show_url_dialog = false;
+                    }
+                });
+            });
+        self.show_url_dialog = open;
+    }
+
     fn show_ai_dialog(&mut self, ctx: &egui::Context) {
         let mut open = self.show_ai_dialog;
         egui::Window::new("Generate Sprite with AI")
@@ -432,6 +497,10 @@ impl eframe::App for SpriteditApp {
                     }
                     if ui.button("Open...  Ctrl+O").clicked() {
                         self.open_file();
+                        ui.close_menu();
+                    }
+                    if ui.button("Load from URL...").clicked() {
+                        self.show_url_dialog = true;
                         ui.close_menu();
                     }
                     if ui.button("Save  Ctrl+S").clicked() {
@@ -539,6 +608,9 @@ impl eframe::App for SpriteditApp {
         // Dialogs
         if self.show_new_dialog {
             self.show_new_sprite_dialog(ctx);
+        }
+        if self.show_url_dialog {
+            self.show_url_dialog(ctx);
         }
         if self.show_ai_dialog {
             self.show_ai_dialog(ctx);

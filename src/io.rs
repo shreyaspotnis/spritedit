@@ -30,11 +30,25 @@ pub fn png_to_sprite(data: &[u8]) -> Option<Sprite> {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod native {
+    use std::io::Read;
+
     pub fn open_file_dialog() -> Option<Vec<u8>> {
         let path = rfd::FileDialog::new()
             .add_filter("Images", &["png", "jpg", "jpeg", "gif", "bmp"])
             .pick_file()?;
         std::fs::read(path).ok()
+    }
+
+    pub fn fetch_url(url: &str) -> Result<Vec<u8>, String> {
+        let response = ureq::get(url)
+            .call()
+            .map_err(|e| format!("Fetch failed: {e}"))?;
+        let mut buf = Vec::new();
+        response
+            .into_reader()
+            .read_to_end(&mut buf)
+            .map_err(|e| format!("Read failed: {e}"))?;
+        Ok(buf)
     }
 
     pub fn save_file_dialog(data: &[u8]) -> bool {
@@ -135,6 +149,43 @@ pub mod web {
         anchor.click();
 
         let _ = web_sys::Url::revoke_object_url(&url);
+    }
+
+    pub fn fetch_url(url: &str) {
+        let url = url.to_string();
+        wasm_bindgen_futures::spawn_local(async move {
+            let mut opts = web_sys::RequestInit::new();
+            opts.set_method("GET");
+            opts.set_mode(web_sys::RequestMode::Cors);
+
+            let request = web_sys::Request::new_with_str_and_init(&url, &opts)
+                .expect("Failed to create request");
+
+            let window = web_sys::window().unwrap();
+            let resp_value =
+                wasm_bindgen_futures::JsFuture::from(window.fetch_with_request(&request))
+                    .await;
+            let resp_value = match resp_value {
+                Ok(v) => v,
+                Err(_) => return,
+            };
+            let resp: web_sys::Response = resp_value.dyn_into().unwrap();
+            if !resp.ok() {
+                return;
+            }
+            let array_buffer = match resp.array_buffer() {
+                Ok(promise) => {
+                    match wasm_bindgen_futures::JsFuture::from(promise).await {
+                        Ok(buf) => buf,
+                        Err(_) => return,
+                    }
+                }
+                Err(_) => return,
+            };
+            let uint8_array = js_sys::Uint8Array::new(&array_buffer);
+            let bytes = uint8_array.to_vec();
+            PENDING_FILE.with(|f| *f.borrow_mut() = Some(bytes));
+        });
     }
 
     pub fn check_pending_file() -> Option<Vec<u8>> {
