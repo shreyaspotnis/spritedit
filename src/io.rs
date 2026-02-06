@@ -154,7 +154,7 @@ pub mod web {
     pub fn fetch_url(url: &str) {
         let url = url.to_string();
         wasm_bindgen_futures::spawn_local(async move {
-            let mut opts = web_sys::RequestInit::new();
+            let opts = web_sys::RequestInit::new();
             opts.set_method("GET");
             opts.set_mode(web_sys::RequestMode::Cors);
 
