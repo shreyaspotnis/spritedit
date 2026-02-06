@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spritedit</title>
+    <base href="/spritedit/" />
+    
+<script type="module">
+import init, * as bindings from '/spritedit/spritedit-349aeeaede344217.js';
+const wasm = await init({ module_or_path: '/spritedit/spritedit-349aeeaede344217_bg.wasm' });
+
+
+window.wasmBindings = bindings;
+
+
+dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
+
+</script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #1e1e1e;
+        }
+        canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+    </style>
+<link rel="modulepreload" href="/spritedit/spritedit-349aeeaede344217.js" crossorigin="anonymous" integrity="sha384-HRfZUUtrjETWepPhvBjpawompTdm4DepZEKgd2x2Xc9tN30bhLjJR31N8Lu94P5t"><link rel="preload" href="/spritedit/spritedit-349aeeaede344217_bg.wasm" crossorigin="anonymous" integrity="sha384-clb2z+VhAhrGhjMjTRfnZaXMGSE9sG8XVlCNt7ZDm9GE3NkDXpEYI54YJSGrC/FH" as="fetch" type="application/wasm"></head>
+<body>
+    <canvas id="spritedit_canvas"></canvas>
+</body>
+</html>
