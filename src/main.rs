@@ -26,11 +26,21 @@ fn main() {
 
     #[cfg(target_arch = "wasm32")]
     {
+        use wasm_bindgen::JsCast;
         console_error_panic_hook::set_once();
         wasm_bindgen_futures::spawn_local(async {
+            let document = web_sys::window()
+                .unwrap()
+                .document()
+                .unwrap();
+            let canvas = document
+                .get_element_by_id("spritedit_canvas")
+                .unwrap()
+                .dyn_into::<web_sys::HtmlCanvasElement>()
+                .unwrap();
             eframe::WebRunner::new()
                 .start(
-                    "spritedit_canvas",
+                    canvas,
                     eframe::WebOptions::default(),
                     Box::new(|cc| Ok(Box::new(app::SpriteditApp::new(cc)))),
                 )

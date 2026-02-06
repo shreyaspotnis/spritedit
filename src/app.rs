@@ -160,7 +160,7 @@ impl SpriteditApp {
         }
         #[cfg(target_arch = "wasm32")]
         {
-            io::web::save_file("sprite.png", &png_data);
+            io::web::save_file(&png_data, "sprite.png");
             self.status_message = "Downloading sprite...".into();
         }
     }
